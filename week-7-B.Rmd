@@ -26,13 +26,42 @@ The parameter $H$ is still the average number of hours of work reported by stude
 
 Review the Cardinal Virtues which serve as our guide for data science. Under Justice, is this model predictive or causal? What would the Preceptor Table look like? Write down the mathematical model we are using.
 
+$Y_i$ = $\mu$ + $epsilon_i$
+```{r sc1}
+fit_obj <- stan_glm(data = qscores,
+                    hours ~ 1,
+                    family = gaussian(),
+                    refresh = 0)
+fit_obj
+
+# H is the average number of hours of work reported by students per course.
+# sigma is the variability of reported hours
+# predictive, because we only have one potential outcome that's not directly affected by specific variables
+# preceptor table is ID and hours, where each row is class, and each value in the column is hours
+# y = mu
+```
 
 
 ## Scene 2
 
 **Prompt:** Create a plot of the posterior probability distribution for $H$. Interpret the plot. 
 
+```{r}
+fit_obj %>% 
+  as_tibble() %>% 
+  rename(mu = `(Intercept)`) %>% 
+  ggplot(aes(x = mu)) +
+    geom_histogram(aes(y = after_stat(count/sum(count))), 
+                   binwidth = 0.01, 
+                   color = "white") +
+    labs(title = "Posterior Probability Distribution",
+         subtitle = "Average hours of work for Harvard courses",
+         x = "Time Spent in Classes (hrs)",
+         y = "Probability") +
+    theme_classic()
 
+# This plot only plots average hours, which is why there are no outliers.
+```
 
 
 ## Scene 3
@@ -41,11 +70,35 @@ Review the Cardinal Virtues which serve as our guide for data science. Under Jus
 
 What do the rows and columns mean in the matrix returned by `posterior_predict()` mean?
 
-
 Define D as the number of hours difference between the workload of two randomly selected courses. What is the 90% confidence interval within which the difference should fall?  
 
 
 What is your posterior probability distribution for D? 
+
+```{r sc3}
+course_diff <- posterior_predict(fit_obj) %>%
+  as_tibble() %>%
+  select(1,2) %>%
+  rename('pred1' = 1,
+         'pred2' = 2) %>%
+  #rowwise() %>%
+  mutate(D =  pred2-pred1)
+
+quantile(course_diff$D, probs = c(0.05, 0.95))
+
+# Columns are for each class, and rows are example populations responses that 
+# would fit with our posterior distribution
+
+course_diff %>%
+  ggplot(aes(x = D, y = after_stat(count/sum(count)))) + 
+    geom_histogram(bins = 100) + 
+    labs(title = 'Posterior Probability of the Hours Difference',
+         x = 'Hours',
+         y = 'Probability')
+
+```
+
+
 
 
 
